@@ -109,6 +109,14 @@ namespace PlugDOS
                     else
                         PlugDOS.WriteLine("Error: Unable to parse delay.", ConsoleColor.Red);
                 }
+                else if (command == "if")
+                {
+                    string state1 = args[0];
+                    string state2 = args[1];
+                    string state3 = args[2];
+                    if (findRegister(state1).Data.ToString() == findRegister(state2).Data.ToString())
+                        this.ExecASM((string)findRegister(state3).Data, "runtime", true);
+                }
                 else if (command == "def") // Read till the end of function, Or throw an error if none was found.
                 {
                     if (!checkArgs(args, 1)) break;
@@ -160,7 +168,7 @@ namespace PlugDOS
                 }
                 else if (command == "remove")
                 {
-                    if (!checkArgs(args, 2)) break;
+                    if (!checkArgs(args, 1)) break;
                     try { filesystem.files.Remove(filesystem.GetFile(args[0])); } catch { }
                 }
                 else if (command == "append")
