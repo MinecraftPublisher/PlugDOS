@@ -1,0 +1,18 @@
+﻿<Properties StartupConfiguration="{941D0766-A24A-4F04-9B1A-7DE1E106B1AB}|Default">
+  <MonoDevelop.Ide.Workbench ActiveDocument="PlugDOS/PlugDOS.cs">
+    <Files>
+      <File FileName="PlugDOS/Program.cs" Line="9" Column="18" />
+      <File FileName="PlugDOS/PlugDOS.cs" Line="146" Column="99" />
+      <File FileName="PlugDOS/DataTypes.cs" />
+      <File FileName="PlugDOS/PlugDOS.csproj" />
+      <File FileName="PlugDOS/Properties/AssemblyInfo.cs" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Release|anycpu" />
+  <MonoDevelop.Ide.ItemProperties.PlugDOS PreferredExecutionTarget="MonoDevelop.Default" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MultiItemStartupConfigurations />
+</Properties>

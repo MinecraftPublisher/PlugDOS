@@ -72,9 +72,13 @@ namespace PlugDOS
                 string data;
                 try { data = line.Substring(command.Length + 1); } catch { data = line.Substring(command.Length); }
                 string[] args = data.Split(' ');
-                if (command == "#"); // A comment
+                if (command == "#" || command == "") ; // A comment
                 else if (command == "echo" && checkArgs(args, 1))
                     PlugDOS.WriteLine(data, ConsoleColor.DarkCyan);
+                else if (command == "clear")
+                    Console.Clear();
+                else if (command == "dump" && checkArgs(args, 1) && filesystem.GetFile(args[0]).Path != "EMPTY")
+                    PlugDOS.WriteLine("\n-----------------\n" + filesystem.GetFile(args[0]).Data + "\n-----------------\n");
                 else if (command == "error") // Drop an error and crash the program
                 {
                     if (!checkArgs(args, 1)) break;
@@ -88,6 +92,13 @@ namespace PlugDOS
                     Console.Write(">> ");
                     string ASKinput = Console.ReadLine();
                     variables[args[0]] = new LoadedFile(ASKinput);
+                }
+                else if (command == "register")
+                {
+                    if (!checkArgs(args, 2)) break;
+                    string registerName = args[0];
+                    string registerContent = data.Substring(registerName.Length + 1);
+                    variables[registerName] = new LoadedFile(registerContent);
                 }
                 else if (command == "wait") // Wait for a few seconds
                 {
@@ -111,7 +122,7 @@ namespace PlugDOS
                     index++;
                     while (!endFound)
                     {
-                        if(index >= bootFile.Count)
+                        if (index >= bootFile.Count)
                         {
                             terminated = true;
                             endFound = true;
@@ -134,20 +145,49 @@ namespace PlugDOS
                         }
                         index++;
                     }
-                    if(!terminated)
+                    if (!terminated)
                     {
                         loadedFunctions[fnname] = new LoadedFile(String.Join("\n", function));
                     }
                 }
                 else if (command == "write")
                 {
-                    if (!checkArgs(args, 1)) break;
-                    string registerID = data.Split(' ')[0];
-                    variables[registerID] = new LoadedFile(data.Substring(registerID.Length + 1));
+                    if (!checkArgs(args, 2)) break;
+                    string fsName = args[0];
+                    string content = data.Substring(fsName.Length + 1);
+                    try { filesystem.files.Remove(filesystem.GetFile(fsName)); } catch { }
+                    filesystem.files.Add(new File(fsName, content));
+                }
+                else if (command == "remove")
+                {
+                    if (!checkArgs(args, 2)) break;
+                    try { filesystem.files.Remove(filesystem.GetFile(args[0])); } catch { }
+                }
+                else if (command == "append")
+                {
+                    if (!checkArgs(args, 2)) break;
+                    string fsName = args[0];
+                    string content = data.Substring(fsName.Length + 1);
+                    if (filesystem.GetFile(fsName).Path == "EMPTY")
+                        filesystem.files.Add(new File(fsName, content));
+                    else
+                    {
+                        File fsFile = filesystem.GetFile(fsName);
+                        if (fsFile.FileType == ("string").GetType())
+                        {
+                            filesystem.files.Remove(fsFile);
+                            fsFile.Data += "\n" + content;
+                            filesystem.files.Add(fsFile);
+                        }
+                        else
+                        {
+                            PlugDOS.WriteLine("ERROR: Filetype unmergable", ConsoleColor.Red);
+                        }
+                    }
                 }
                 else if (command == "import")
                 {
-                    if(filesystem.GetFile(data).Path == "EMPTY")
+                    if (filesystem.GetFile(data).Path == "EMPTY")
                     {
                         terminated = true;
                         PlugDOS.WriteLine("ERROR: Couldn't find file to import, Process terminated.", ConsoleColor.Red);
@@ -161,6 +201,26 @@ namespace PlugDOS
                 {
                     this.ExecASM((string)findRegister(data).Data, "runtime", true);
                 }
+                else if (command == "save")
+                    filesystem.SaveFileSystem(filesystem.FileSystemPath);
+                else if (command == "load")
+                    filesystem.LoadFileSystem(filesystem.FileSystemPath);
+                else if (command == "wipe")
+                {
+                    PlugDOS.WriteLine("CAUTION: This action will wipe your whole disk, Meaning you will loose everything you have stored in PlugDOS!\nIf you want to continue, Type in \"agree\" into the box below and press enter.", ConsoleColor.Red);
+                    Console.Write("Typing \"agree\" would delete ALL your files >> ");
+                    if(Console.ReadLine() == "agree")
+                    {
+                        PlugDOS.WriteLine("WIPING DRIVE...");
+                        filesystem.NewFileSystem();
+                        filesystem.SaveFileSystem(filesystem.FileSystemPath);
+                    }
+                    else
+                    {
+                        terminated = true;
+                        PlugDOS.WriteLine("[PROCESS TERMINATION] Reason: Trying to wipe the filesystem");
+                    }
+                }
 
 
 
@@ -168,37 +228,11 @@ namespace PlugDOS
                 // Throw an error if there is an unknown command, But don't terminate the process.
                 else
                 {
-                    if(loadedFunctions.ContainsKey(command))
+                    if (loadedFunctions.ContainsKey(command))
                     {
                         // Check the function's arguments
                         LoadedFile function = loadedFunctions[command];
-                        string fnArgs = "";
-                        foreach (string fnLine in function.Data.ToString().Split('\n'))
-                        {
-                            if(fnLine.Split(' ')[0].ToLower() == "args" && fnLine.ToLower() != "args")
-                            {
-                                fnArgs = fnLine.Substring(fnLine.Split(' ')[0].Length + 1);
-                                break;
-                            }
-                        }
-                        if(fnArgs == "")
-                        {
-                            // Function has no args, Just run it.
-                            this.ExecASM(function.Data.ToString(), "runtime", true);
-                        }
-                        else
-                        {
-                            // Function has args! :flushed:
-                            if(args.Length == fnArgs.Split(' ').Length)
-                            {
-
-                            }
-                            else
-                            {
-                                // Whoopso boopso...?
-                                PlugDOS.WriteLine("ERROR: Unable to run command, ");
-                            }
-                        }
+                        this.ExecASM(function.Data.ToString(), "runtime", true);
                     }
                     else
                     {
@@ -225,7 +259,8 @@ namespace PlugDOS
         public FileSystem()
         {
             this.NewFileSystem();
-            // this.LoadFileSystem(this.FileSystemPath);
+            this.LoadFileSystem(this.FileSystemPath);
+            this.SaveFileSystem(this.FileSystemPath);
         }
 
         /// <summary>
@@ -300,6 +335,7 @@ namespace PlugDOS
         /// </summary>
         public void NewFileSystem()
         {
+            files = new List<File>();
             files.Add(new File("/boot.pd",
                 "# The initial boot procedure for PlugDOS that loads up all system files and runs through them.\n" + 
                 "ECHO Booting...\n" +
@@ -309,7 +345,16 @@ namespace PlugDOS
             files.Add(new File("/sys/load.pd",
                 "# The load procedure for all CMD commands and the PROMPT loop.\n" +
                 "IMPORT /sys/prompt.pd\n" +
+                "IMPORT /sys/help.pd\n" +
                 "PROMPT"));
+            files.Add(new File("/sys/help.pd",
+                "# The help command!\n" +
+                "DEF help\n" +
+                "ECHO --- PlugDOS help ---\n" +
+                "ECHO Whoops!\n" +
+                "ECHO the owner is  too lazy, So wait a while :)\n" +
+                "ECHO --- END help lol ---\n" +
+                "END help"));
             files.Add(new File("/sys/prompt.pd",
                 "# The command PROMPT for PlugDOS.\n" +
                 "DEF PROMPT\n" +
@@ -339,7 +384,7 @@ namespace PlugDOS
                 }
             }
 
-            return new File();
+            return new File("EMPTY", "");
         }
 
         public File[] GetFiles(string path)
