@@ -9,7 +9,7 @@ namespace PlugDOS
 {
     class PlugDOS
     {
-        public string version = "v0.0.3";
+        public string version = "v1.0.5";
         public FileSystem filesystem = new FileSystem();
         public Dictionary<string, LoadedFile> loadedFunctions = new Dictionary<string, LoadedFile>();
         public Dictionary<string, LoadedFile> variables = new Dictionary<string, LoadedFile>();
