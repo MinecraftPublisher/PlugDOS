@@ -4,6 +4,9 @@
 ## What does it do?
 Everything...? ( ~~Except filesystem access~~ half done )
 
+## Where to find it?
+[WINDOWS ONLY] [Click here!](https://github.com/MinecraftPublisher/PlugDOS/releases/latest)
+
 ## The programming language name: PlugDOSLang (PDL)
 
 ## Available commands:
