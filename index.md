@@ -1,37 +1,31 @@
-## Welcome to GitHub Pages
+# PlugDOS
+ A Semi-OS optimised for the command line.
 
-You can use the [editor on GitHub](https://github.com/MinecraftPublisher/PlugDOS/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+## What does it do?
+Everything...? ( ~~Except filesystem access~~ half done )
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+## The programming language name: PlugDOSLang (PDL)
 
-### Markdown
-
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
+## Available commands:
+ - `# TEXT` => A comment!
+ - `clear` => Clears the console
+ - `dump PATH` => Dumps a file's data on command line
+ - `error STRING` => Drop an error to the console 
+ - `ask REGISTERNAME` => Ask the user for input, And store it in the registry
+ - `register REGISTERNAME DATA MORE DATA` => Write data to the registry
+ - `wait TIME` => Delay for a specified amount of seconds
+ - `if STATEMENT1 STATEMENT2 REGISTERTORUN` => Run a register value if statement1 and statement2 are equal
+ - Define a function (could be called later by calling it as a command, Example: `testFUNCTION`):
+```DEF testFUNCTION
+# Code goes here...
+END testFUNCTION
 ```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/MinecraftPublisher/PlugDOS/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+ - `write FILENAME CONTENT` => Write some content to a file
+ - `remove FILENAME` => Delete a file
+ - `append FILENAME CONTENT` => Appends content to a file (string-only)
+ - `import FILENAME` => Import a file as a PDL file
+ - `exec REGISTERNAME` => Execute a PDL script from register
+ ## The essentials:
+  - `load` => Loads the filesystem from disk, Reverting any changes made without saving
+  - `save` => Saves the filesystem to the disk
+  - `wipe` => Wipes the PlugDOSFS drive, Be careful! We also prompt you at any time
