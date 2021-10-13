@@ -15,3 +15,7 @@ PlugDOS/bin/Debug/PlugDOS.exe
 *.pdb
 *.exe
 *.bin
+*.json
+PlugDOS/bin/Release/PlugDOS.fs.bin
+*.bin
+*.exe

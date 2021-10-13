@@ -10,7 +10,7 @@ namespace PlugDOS
 {
     class PlugDOS
     {
-        public string version = "v1.0.5-0";
+        public string version = "v1.2.0";
         public FileSystem filesystem = new FileSystem();
         public Dictionary<string, LoadedFile> loadedFunctions = new Dictionary<string, LoadedFile>();
         public Dictionary<string, LoadedFile> variables = new Dictionary<string, LoadedFile>();
@@ -19,7 +19,7 @@ namespace PlugDOS
         {
             PlugDOS.WriteLine("| PlugDOS " + this.version + " |\n", ConsoleColor.Blue);
             WriteLine("Loading PlugDOS...");
-            File boot = filesystem.GetFile("/boot.pd");
+            File boot = filesystem.ReadFile("/boot.pd");
             if (boot.Path == "EMPTY")
             {
                 WriteLine("ERROR: Could not find a bootable file.");
@@ -73,13 +73,30 @@ namespace PlugDOS
                 string data;
                 try { data = line.Substring(command.Length + 1); } catch { data = line.Substring(command.Length); }
                 string[] args = data.Split(' ');
-                if (command == "#" || command == "") ; // A comment
-                else if (command == "echo" && checkArgs(args, 1))
-                    PlugDOS.WriteLine(data, ConsoleColor.DarkCyan);
+                if (command == "#" || command == "") { } // A comment
+                else if (command == "echo")
+                {
+                    if (checkArgs(args, 1))
+                    {
+                        PlugDOS.WriteLine(data, ConsoleColor.DarkCyan);
+                    }
+                }
                 else if (command == "clear")
                     Console.Clear();
-                else if (command == "dump" && checkArgs(args, 1) && filesystem.GetFile(args[0]).Path != "EMPTY")
-                    PlugDOS.WriteLine("\n-----------------\n" + filesystem.GetFile(args[0]).Data + "\n-----------------\n");
+                else if (command == "dump")
+                {
+                    if (checkArgs(args, 1))
+                    {
+                        if (filesystem.ReadFile(args[0]).Path != "EMPTY")
+                        {
+                            PlugDOS.WriteLine("\n-----------------\n" + filesystem.ReadFile(args[0]).Data + "\n-----------------\n");
+                        }
+                        else
+                        {
+                            PlugDOS.WriteLine("ERROR: Missing file", ConsoleColor.Red);
+                        }
+                    }
+                }
                 else if (command == "error") // Drop an error and crash the program
                 {
                     if (!checkArgs(args, 1)) break;
@@ -108,7 +125,7 @@ namespace PlugDOS
                     if (Int32.TryParse(data, out delay))
                         Thread.Sleep(delay * 1000);
                     else
-                        PlugDOS.WriteLine("Error: Unable to parse delay.", ConsoleColor.Red);
+                        PlugDOS.WriteLine("ERROR: Unable to parse delay.", ConsoleColor.Red);
                 }
                 else if (command == "if")
                 {
@@ -164,14 +181,14 @@ namespace PlugDOS
                     if (!checkArgs(args, 2)) break;
                     string fsName = args[0];
                     string content = data.Substring(fsName.Length + 1);
-                    try { filesystem.files.Remove(filesystem.GetFile(fsName)); } catch { }
-                    filesystem.files.Add(new File(fsName, content));
+                    try { filesystem.files.Remove(filesystem.ReadFile(fsName)); } catch { }
+                    filesystem.WriteFile(new File(fsName, content));
                     filesystem.SaveFileSystem(filesystem.FileSystemPath);
                 }
                 else if (command == "remove")
                 {
                     if (!checkArgs(args, 1)) break;
-                    try { filesystem.files.Remove(filesystem.GetFile(args[0])); } catch { }
+                    try { filesystem.files.Remove(filesystem.ReadFile(args[0])); } catch { }
                     filesystem.SaveFileSystem(filesystem.FileSystemPath);
                 }
                 else if (command == "append")
@@ -179,19 +196,19 @@ namespace PlugDOS
                     if (!checkArgs(args, 2)) break;
                     string fsName = args[0];
                     string content = data.Substring(fsName.Length + 1);
-                    if (filesystem.GetFile(fsName).Path == "EMPTY")
+                    if (filesystem.ReadFile(fsName).Path == "EMPTY")
                     {
-                        filesystem.files.Add(new File(fsName, content));
+                        filesystem.WriteFile(new File(fsName, content));
                         filesystem.SaveFileSystem(filesystem.FileSystemPath);
                     }
                     else
                     {
-                        File fsFile = filesystem.GetFile(fsName);
+                        File fsFile = filesystem.ReadFile(fsName);
                         if (fsFile.FileType == ("string").GetType())
                         {
                             filesystem.files.Remove(fsFile);
                             fsFile.Data += "\n" + content;
-                            filesystem.files.Add(fsFile);
+                            filesystem.WriteFile(fsFile);
                             filesystem.SaveFileSystem(filesystem.FileSystemPath);
                         }
                         else
@@ -202,14 +219,14 @@ namespace PlugDOS
                 }
                 else if (command == "import")
                 {
-                    if (filesystem.GetFile(data).Path == "EMPTY")
+                    if (filesystem.ReadFile(data).Path == "EMPTY")
                     {
                         terminated = true;
                         PlugDOS.WriteLine("ERROR: Couldn't find file to import, Process terminated.", ConsoleColor.Red);
                     }
                     else
                     {
-                        this.ExecASM((string)filesystem.GetFile(data).Data, "runtime", true);
+                        this.ExecASM((string)filesystem.ReadFile(data).Data, "runtime", true);
                     }
                 }
                 else if (command == "exec")
@@ -224,7 +241,7 @@ namespace PlugDOS
                 {
                     PlugDOS.WriteLine("CAUTION: This action will wipe your whole disk, Meaning you will loose everything you have stored in PlugDOS!\nIf you want to continue, Type in \"agree\" into the box below and press enter.", ConsoleColor.Red);
                     Console.Write("Typing \"agree\" would delete ALL your files >> ");
-                    if(Console.ReadLine() == "agree")
+                    if (Console.ReadLine() == "agree")
                     {
                         PlugDOS.WriteLine("WIPING DRIVE...");
                         filesystem.NewFileSystem();
@@ -266,7 +283,49 @@ namespace PlugDOS
                 else if (command == "rmdir")
                 {
                     if (!checkArgs(args, 1)) break;
-                    filesystem.RemoveDirectory(args[0]);
+                    filesystem.DeleteDirectory(args[0]);
+                }
+                else if (command == "reg")
+                {
+                    if (!checkArgs(args, 3)) break;
+                    string regCMD = args[0];
+                    string path = args[1];
+                    string reg = args[2];
+
+                    if (regCMD == "write")
+                    {
+                        if ((string)findRegister(reg).Data == "null")
+                        {
+                            PlugDOS.WriteLine("ERROR: Registry field not found", ConsoleColor.Red);
+                        }
+                        else
+                        {
+                            filesystem.DeleteFile(path);
+                            filesystem.WriteFile(new File(path, (string)findRegister(reg).Data));
+                        }
+                    }
+                    else if (regCMD == "read")
+                    {
+                        File foundFile = filesystem.ReadFile(path);
+                        variables[reg] = new LoadedFile((string)foundFile.Data);
+                    }
+                    else if (regCMD == "clone")
+                    {
+                        if ((string)findRegister(path).Data == "null")
+                        {
+                            PlugDOS.WriteLine("ERROR: Registry field not found", ConsoleColor.Red);
+                        }
+                        else
+                        {
+                            variables[reg] = findRegister(path);
+                        }
+                    }
+                    filesystem.SaveFileSystem(filesystem.FileSystemPath);
+                }
+                else if (command == "base")
+                {
+                    PlugDOS.WriteLine("Updating system files...");
+                    filesystem.NewFileSystem();
                 }
 
 
@@ -351,7 +410,6 @@ namespace PlugDOS
                 byte[] bytes = SerializeToBytes(this.files);
                 writer.Write(Convert.ToBase64String(bytes));
                 writer.Close();
-                // PlugDOS.WriteLine("Saved the filesystem!");
             }
         }
 
@@ -367,7 +425,6 @@ namespace PlugDOS
                 {
                     this.files = (List<File>)DeserializeFromBytes(Convert.FromBase64String(reader.ReadString()));
                     reader.Close();
-                    // PlugDOS.WriteLine("Loaded the filesystem!");
                 }
             }
             else
@@ -382,27 +439,57 @@ namespace PlugDOS
         /// </summary>
         public void NewFileSystem()
         {
-            files = new List<File>();
-            files.Add(new File("/boot.pd",
+            WriteFile(new File("/boot.pd",
                 "# The initial boot procedure for PlugDOS that loads up all system files and runs through them.\n" + 
                 "ECHO Booting...\n" +
                 "WAIT 2\n" +
                 "IMPORT /sys/load.pd"
                 ));
-            files.Add(new File("/sys/load.pd",
+            WriteFile(new File("/sys/load.pd",
                 "# The load procedure for all CMD commands and the PROMPT loop.\n" +
                 "IMPORT /sys/prompt.pd\n" +
                 "IMPORT /sys/help.pd\n" +
                 "PROMPT"));
-            files.Add(new File("/sys/help.pd",
+            WriteFile(new File("/sys/help.pd",
                 "# The help command!\n" +
                 "DEF help\n" +
                 "ECHO --- PlugDOS help ---\n" +
-                "ECHO Whoops!\n" +
-                "ECHO the owner is  too lazy, So wait a while :)\n" +
-                "ECHO --- END help lol ---\n" +
-                "END help"));
-            files.Add(new File("/sys/prompt.pd",
+                "ECHO \"# DATA\" or an empty line => A comment\n" +
+                "ECHO \"ECHO string\" => Writes text to the console\n" +
+                "ECHO \"CLEAR\" => Cleares the console\n" +
+                "ECHO \"DUMP string\" => Dumps a file's data into console\n" +
+                "ECHO \"ERROR string\" => Throws an error to the console and terminates the process\n" +
+                "ECHO \"ASK registry string\" => Asks the user for input and puts it into a register\n" +
+                "ECHO \"REGISTER key content\" => Registers a value with a certain key\n" +
+                "ECHO \"WAIT seconds\" => Pauses the program for a specific amount of time\n" +
+                "ECHO \"IF statement1 statement2 registry1\" => If statement1 and 2 from the registry are equal, registry1 will be executed as PDL\n" +
+                "ECHO \"DEF functionname\" and \"END functionname\" => Define a function that could be called globally\n" +
+                "ECHO \"WRITE text\" => Write text to a file\n" +
+                "ECHO \"REMOVE filename\" => Removes a file from disk\n" +
+                "ECHO \"APPEND filename string\" => Adds a string to a file on a new line\n" +
+                "ECHO \"IMPORT filename\" => Imports a file as a PDL\n" +
+                "ECHO \"EXEC registry1\" => Executes a registry spot as a PDL\n" +
+                "ECHO \"SAVE\" => Saves the filesystem\n" +
+                "ECHO \"LOAD\" => Loads the filesystem\n" +
+                "ECHO \"WIPE\" => Removes all data on your PlugDOS disk.\n" +
+                "ECHO \"LS\" => List files and directories in the current directory\n" +
+                "ECHO \"CD path\" => Change the current directory path\n" +
+                "ECHO \"MKDIR dirpath\" => Creates a directory at the given path\n" +
+                "ECHO \"RMDIR path\" => Deletes a directory at the given path\n" +
+                "ECHO \"REG\" => This command has a few parts, Which will be explained in the REGHELP command, Please refer to there\n" +
+                "ECHO \"UPDATE\" => Updates the system files from the current executable" +
+                "ECHO And finally, To call a registered function, You just need to type its name in the EXEC command or your PDL script\n" +
+                "ECHO --- END help ---\n" +
+                "END help\n" +
+                "\n" +
+                "DEF reghelp\n" +
+                "ECHO --- REG command help ---\n" +
+                "ECHO \"REG WRITE filepath registry1\" => Pulls data from the registry and writes it to the disk\n" +
+                "ECHO \"REG READ filepath registry1\" => Pulls data form a file and registers it on the registry\n" +
+                "ECHO \"REG clone registry1 registry2\" => Writes registry1 to registry2" +
+                "ECHO --- END REG command help ---\n" +
+                "END reghelp\n"));
+            WriteFile(new File("/sys/prompt.pd",
                 "# The command PROMPT for PlugDOS.\n" +
                 "DEF PROMPT\n" +
                 "ECHO PlugDOS terminal\n" +
@@ -416,33 +503,56 @@ namespace PlugDOS
                 "END PROMPT2\n"));
         }
 
+        public void WriteFile(File file)
+        {
+            File file2 = file;
+            if(file2.Path.EndsWith(".RESERVE"))
+            {
+                PlugDOS.WriteLine("ERROR: Denied permission to reserved file/path", ConsoleColor.Red);
+            }
+            if(!file2.Path.StartsWith("/"))
+                file2.Path = "/" + file2.Path;
+            if (ReadFile(file2.Path).Path == "EMPTY")
+                files.Add(file2);
+            else
+            {
+                files.Remove(ReadFile(file2.Path));
+                files.Add(file2);
+            }
+            SaveFileSystem(FileSystemPath);
+        }
+
         /// <summary>
         /// Gets a file from a path.
         /// </summary>
         /// <param name="Path">The file path</param>
         /// <returns>A filled file, Otherwise a file with an "EMPTY" path.</returns>
-        public File GetFile(string Path)
+        public File ReadFile(string Path)
         {
+            string Path2 = Path;
+            if (!Path2.StartsWith("/"))
+                Path2 = directory + Path2;
             foreach (File file in this.files)
             {
-                if(file.Path == Path && !file.Path.Contains(".RESERVE"))
+                if ((file.Path == Path2 || directory + file.Path == Path2) && !file.Path.Contains(".RESERVE"))
                 {
                     return file;
                 }
             }
 
+            SaveFileSystem(FileSystemPath);
             return new File("EMPTY", "");
         }
 
         public bool DeleteFile(string path)
         {
-            if(this.GetFile(path).Path == "EMPTY")
+            if(this.ReadFile(path).Path == "EMPTY")
             {
                 return false;
             }
             else
             {
-                this.files.Remove(this.GetFile(path));
+                this.files.Remove(this.ReadFile(path));
                 SaveFileSystem(this.FileSystemPath);
                 return true;
             }
@@ -464,7 +574,7 @@ namespace PlugDOS
             SaveFileSystem(this.FileSystemPath);
         }
 
-        public void RemoveDirectory(string path)
+        public void DeleteDirectory(string path)
         {
             string workingPath = directory + path;
             if (!workingPath.EndsWith("/"))
@@ -478,7 +588,7 @@ namespace PlugDOS
                 workingPath += ".RESERVE";
                 foreach (File file in this.files)
                 {
-                    if (file.Path == workingPath)
+                    if (file.Path == workingPath || file.Path.StartsWith(workingPath))
                     {
                         files.Remove(file);
                         return;
