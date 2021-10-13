@@ -10,3 +10,8 @@ PlugDOS/bin/Release/PlugDOS.fs.bin
 florida
 man
 😏
+PlugDOS/bin/Debug/PlugDOS.exe
+*.bin
+*.pdb
+*.exe
+*.bin

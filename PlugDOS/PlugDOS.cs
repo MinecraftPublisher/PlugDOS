@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace PlugDOS
 {
     class PlugDOS
     {
-        public string version = "v1.0.5";
+        public string version = "v1.0.5-0";
         public FileSystem filesystem = new FileSystem();
         public Dictionary<string, LoadedFile> loadedFunctions = new Dictionary<string, LoadedFile>();
         public Dictionary<string, LoadedFile> variables = new Dictionary<string, LoadedFile>();
@@ -89,7 +90,7 @@ namespace PlugDOS
                 else if (command == "ask") // Ask for an input and store the input in the variables dictionary.
                 {
                     if (!checkArgs(args, 1)) break;
-                    Console.Write(">> ");
+                    Console.Write("" + filesystem.directory + " ~ $ ");
                     string ASKinput = Console.ReadLine();
                     variables[args[0]] = new LoadedFile(ASKinput);
                 }
@@ -165,11 +166,13 @@ namespace PlugDOS
                     string content = data.Substring(fsName.Length + 1);
                     try { filesystem.files.Remove(filesystem.GetFile(fsName)); } catch { }
                     filesystem.files.Add(new File(fsName, content));
+                    filesystem.SaveFileSystem(filesystem.FileSystemPath);
                 }
                 else if (command == "remove")
                 {
                     if (!checkArgs(args, 1)) break;
                     try { filesystem.files.Remove(filesystem.GetFile(args[0])); } catch { }
+                    filesystem.SaveFileSystem(filesystem.FileSystemPath);
                 }
                 else if (command == "append")
                 {
@@ -177,7 +180,10 @@ namespace PlugDOS
                     string fsName = args[0];
                     string content = data.Substring(fsName.Length + 1);
                     if (filesystem.GetFile(fsName).Path == "EMPTY")
+                    {
                         filesystem.files.Add(new File(fsName, content));
+                        filesystem.SaveFileSystem(filesystem.FileSystemPath);
+                    }
                     else
                     {
                         File fsFile = filesystem.GetFile(fsName);
@@ -186,6 +192,7 @@ namespace PlugDOS
                             filesystem.files.Remove(fsFile);
                             fsFile.Data += "\n" + content;
                             filesystem.files.Add(fsFile);
+                            filesystem.SaveFileSystem(filesystem.FileSystemPath);
                         }
                         else
                         {
@@ -229,7 +236,38 @@ namespace PlugDOS
                         PlugDOS.WriteLine("[PROCESS TERMINATION] Reason: Trying to wipe the filesystem");
                     }
                 }
-
+                else if (command == "ls")
+                {
+                    PlugDOS.WriteLine("----------", ConsoleColor.Yellow);
+                    foreach (File file in filesystem.GetFiles(filesystem.directory))
+                    {
+                        PlugDOS.WriteLine(file.Path, ConsoleColor.Yellow);
+                    }
+                    PlugDOS.WriteLine("----------", ConsoleColor.Yellow);
+                }
+                else if (command == "cd")
+                {
+                    if (!checkArgs(args, 1)) break;
+                    if (!data.EndsWith("/"))
+                        data += "/";
+                    if (data.StartsWith("/"))
+                        filesystem.directory = data;
+                    else
+                    {
+                        filesystem.directory += data;
+                        filesystem.directory = Regex.Replace(filesystem.directory, "//", "/");
+                    }
+                }
+                else if (command == "mkdir")
+                {
+                    if (!checkArgs(args, 1)) break;
+                    filesystem.MakeDirectory(args[0]);
+                }
+                else if (command == "rmdir")
+                {
+                    if (!checkArgs(args, 1)) break;
+                    filesystem.RemoveDirectory(args[0]);
+                }
 
 
 
@@ -259,6 +297,7 @@ namespace PlugDOS
         /// Holds the files of the FileSystem in memory.
         /// </summary>
         public List<File> files = new List<File>();
+        public string directory = "/";
         /// <summary>
         /// Holds the path to save the filesystem to.
         /// </summary>
@@ -266,7 +305,6 @@ namespace PlugDOS
 
         public FileSystem()
         {
-            this.NewFileSystem();
             this.LoadFileSystem(this.FileSystemPath);
             this.SaveFileSystem(this.FileSystemPath);
         }
@@ -313,7 +351,7 @@ namespace PlugDOS
                 byte[] bytes = SerializeToBytes(this.files);
                 writer.Write(Convert.ToBase64String(bytes));
                 writer.Close();
-                PlugDOS.WriteLine("Saved the filesystem!");
+                // PlugDOS.WriteLine("Saved the filesystem!");
             }
         }
 
@@ -329,12 +367,13 @@ namespace PlugDOS
                 {
                     this.files = (List<File>)DeserializeFromBytes(Convert.FromBase64String(reader.ReadString()));
                     reader.Close();
-                    PlugDOS.WriteLine("Loaded the filesystem!");
+                    // PlugDOS.WriteLine("Loaded the filesystem!");
                 }
             }
             else
             {
                 PlugDOS.WriteLine("Failed to load data - Save file does not exist");
+                this.NewFileSystem();
             }
         }
 
@@ -386,13 +425,68 @@ namespace PlugDOS
         {
             foreach (File file in this.files)
             {
-                if(file.Path == Path)
+                if(file.Path == Path && !file.Path.Contains(".RESERVE"))
                 {
                     return file;
                 }
             }
 
             return new File("EMPTY", "");
+        }
+
+        public bool DeleteFile(string path)
+        {
+            if(this.GetFile(path).Path == "EMPTY")
+            {
+                return false;
+            }
+            else
+            {
+                this.files.Remove(this.GetFile(path));
+                SaveFileSystem(this.FileSystemPath);
+                return true;
+            }
+        }
+
+        public void MakeDirectory(string path)
+        {
+            string workingPath = directory + path;
+            if (!workingPath.EndsWith("/"))
+                workingPath += "/";
+            if(workingPath.Contains(".RESERVE"))
+            {
+                PlugDOS.WriteLine("ERROR: Denied permission to reserved file/path", ConsoleColor.Red);
+            }
+            else
+            {
+                files.Add(new File(workingPath + ".RESERVE", ""));
+            }
+            SaveFileSystem(this.FileSystemPath);
+        }
+
+        public void RemoveDirectory(string path)
+        {
+            string workingPath = directory + path;
+            if (!workingPath.EndsWith("/"))
+                workingPath += "/";
+            if (workingPath.Contains(".RESERVE"))
+            {
+                PlugDOS.WriteLine("ERROR: Denied permission to reserved file/path", ConsoleColor.Red);
+            }
+            else
+            {
+                workingPath += ".RESERVE";
+                foreach (File file in this.files)
+                {
+                    if (file.Path == workingPath)
+                    {
+                        files.Remove(file);
+                        return;
+                    }
+                }
+                PlugDOS.WriteLine("WARNING: Directory not found", ConsoleColor.DarkYellow);
+            }
+            SaveFileSystem(this.FileSystemPath);
         }
 
         public File[] GetFiles(string path)
@@ -408,6 +502,26 @@ namespace PlugDOS
                         if(filename.IndexOf('/') == -1)
                         {
                             files.Add(file);
+                        }
+                        else
+                        {
+                            string dirpath = path + filename.Split('/')[0] + "/";
+                            bool isAdded = false;
+                            foreach(File file2 in files)
+                            {
+                                if (file2.Path == dirpath)
+                                    isAdded = true;
+                            }
+                            if (file.Path.EndsWith(".RESERVE"))
+                            {
+                                if (!isAdded)
+                                    files.Add(new File(dirpath.Substring(0, file.Path.Length - ".RESERVE".Length), "EMPTY"));
+                            }
+                            else
+                            {
+                                if (!isAdded)
+                                    files.Add(new File(dirpath, "EMPTY"));
+                            }
                         }
                     }
                 }
