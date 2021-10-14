@@ -144,13 +144,13 @@ namespace PlugDOS
                         "# READ function \"" + fnname + "\""
                     };
                     bool endFound = false;
+                    bool dontWrite = false;
 
                     index++;
                     while (!endFound)
                     {
                         if (index >= bootFile.Count)
                         {
-                            terminated = true;
                             endFound = true;
                             PlugDOS.WriteLine("Error: EOF detected, Function still booting.", ConsoleColor.Red);
                         }
@@ -171,9 +171,56 @@ namespace PlugDOS
                         }
                         index++;
                     }
-                    if (!terminated)
+                    if (!terminated && !dontWrite)
                     {
                         loadedFunctions[fnname] = new LoadedFile(String.Join("\n", function));
+                    }
+                }
+                else if (command == "override") // Read until the override end, And write it
+                {
+                    if (!checkArgs(args, 1)) break;
+                    if(!loadedFunctions.ContainsKey(args[0]))
+                    {
+                        terminated = true;
+                        PlugDOS.WriteLine("ERROR: Unable to find function to override.");
+                    }
+                    string fnname = args[0].ToLower();
+                    List<string> function = new List<string>
+                    {
+                        "# BEGIN Function OVERRIDE \"" + fnname + "\" from file \"" + filename + "\""
+                    };
+                    bool endFound = false;
+                    bool dontWrite = false;
+
+                    index++;
+                    while (!endFound && !terminated)
+                    {
+                        if (index >= bootFile.Count)
+                        {
+                            endFound = true;
+                            PlugDOS.WriteLine("Error: EOF detected, Function still booting.", ConsoleColor.Red);
+                        }
+                        else
+                        {
+                            string fnLine = bootFile[index];
+                            string fnCMD = fnLine.Split(' ')[0].ToLower();
+                            string fnARGS;
+                            try { fnARGS = fnLine.Substring(fnCMD.Length + 1); } catch { fnARGS = fnLine.Substring(fnCMD.Length); }
+                            if (fnCMD == "end" && fnARGS.ToLower() == fnname)
+                            {
+                                endFound = true;
+                            }
+                            else
+                            {
+                                function.Add(fnLine);
+                            }
+                        }
+                        index++;
+                    }
+                    if (!terminated && !dontWrite)
+                    {
+                        function.Add("# END Function OVERRIDE \"" + fnname + "\" from file \"" + filename + "\"");
+                        loadedFunctions[fnname] = new LoadedFile(loadedFunctions[fnname].Data + "\n" + String.Join("\n", function));
                     }
                 }
                 else if (command == "write")
@@ -244,6 +291,7 @@ namespace PlugDOS
                     if (Console.ReadLine() == "agree")
                     {
                         PlugDOS.WriteLine("WIPING DRIVE...");
+                        filesystem.files = new List<File>();
                         filesystem.NewFileSystem();
                         filesystem.SaveFileSystem(filesystem.FileSystemPath);
                     }
@@ -326,6 +374,18 @@ namespace PlugDOS
                 {
                     PlugDOS.WriteLine("Updating system files...");
                     filesystem.NewFileSystem();
+                }
+                else if (command == "exit")
+                {
+                    PlugDOS.WriteLine("Shutting down safely...");
+                    PlugDOS.WriteLine("Stopping all running PDBs...");
+                    terminated = true;
+                    PlugDOS.WriteLine("Saving the filesystem...");
+                    filesystem.SaveFileSystem(filesystem.FileSystemPath);
+                    PlugDOS.WriteLine("Freeing up ram space...");
+                    variables = new Dictionary<string, LoadedFile>();
+                    loadedFunctions = new Dictionary<string, LoadedFile>();
+                    PlugDOS.WriteLine("Now you are able to safely close PlugDOS without any issues.");
                 }
 
 
@@ -464,6 +524,7 @@ namespace PlugDOS
                 "ECHO \"WAIT seconds\" => Pauses the program for a specific amount of time\n" +
                 "ECHO \"IF statement1 statement2 registry1\" => If statement1 and 2 from the registry are equal, registry1 will be executed as PDL\n" +
                 "ECHO \"DEF functionname\" and \"END functionname\" => Define a function that could be called globally\n" +
+                "ECHO \"OVERRIDE functionname\" and \"END functionname\" => Add PDL scripts to a function\n" +
                 "ECHO \"WRITE text\" => Write text to a file\n" +
                 "ECHO \"REMOVE filename\" => Removes a file from disk\n" +
                 "ECHO \"APPEND filename string\" => Adds a string to a file on a new line\n" +
@@ -486,7 +547,7 @@ namespace PlugDOS
                 "ECHO --- REG command help ---\n" +
                 "ECHO \"REG WRITE filepath registry1\" => Pulls data from the registry and writes it to the disk\n" +
                 "ECHO \"REG READ filepath registry1\" => Pulls data form a file and registers it on the registry\n" +
-                "ECHO \"REG clone registry1 registry2\" => Writes registry1 to registry2" +
+                "ECHO \"REG clone registry1 registry2\" => Writes registry1 to registry2\n" +
                 "ECHO --- END REG command help ---\n" +
                 "END reghelp\n"));
             WriteFile(new File("/sys/prompt.pd",
@@ -642,6 +703,34 @@ namespace PlugDOS
             {
                 return new List<File>().ToArray();
             }
+        }
+    }
+
+    [Serializable]
+    struct File
+    {
+        public string Path;
+        public object Data;
+        public Type FileType;
+
+        public File(string Path = "EMPTY", object Data = null)
+        {
+            this.Path = Path;
+            this.Data = Data;
+            this.FileType = Data.GetType();
+        }
+    }
+
+    [Serializable]
+    struct LoadedFile
+    {
+        public object Data;
+        public Type FileType;
+
+        public LoadedFile(object Data = null)
+        {
+            this.Data = Data;
+            this.FileType = Data.GetType();
         }
     }
 }
