@@ -18,7 +18,6 @@ namespace PlugDOS
         public void Boot()
         {
             PlugDOS.WriteLine("| PlugDOS " + this.version + " |\n", ConsoleColor.Blue);
-            WriteLine("Loading PlugDOS...");
             File boot = filesystem.ReadFile("/boot.pd");
             if (boot.Path == "EMPTY")
             {
@@ -58,7 +57,10 @@ namespace PlugDOS
             if (variables.ContainsKey(key))
                 return variables[key];
             else
+            {
+                PlugDOS.WriteLine("Register missing: " + key, ConsoleColor.Red);
                 return new LoadedFile("null");
+            }
         }
         bool terminated = false;
 
@@ -68,7 +70,18 @@ namespace PlugDOS
             List<string> bootFile = input.Split('\n').ToList();
             for (index = 0; index < bootFile.Count && !terminated; index++)
             {
+                variables["dos-version"] = new LoadedFile(this.version);
+                variables["base-version"] = new LoadedFile(this.filesystem.baseVersion);
+                variables["found-version"] = new LoadedFile(this.filesystem.foundVersion);
                 string line = bootFile[index];
+                foreach (Match match in Regex.Matches(line, @"\$\[[^\]]+\]"))
+                {
+                    string RegisterName = match.Value.Substring(2, match.Value.Length - 3);
+                    if (variables.ContainsKey(RegisterName))
+                        line = Regex.Replace(line, @"\$\[" + RegisterName + @"\]", (string)variables[RegisterName].Data);
+                    else
+                        line = Regex.Replace(line, @"\$\[" + RegisterName + @"\]", "NOT-FOUND");
+                }
                 string command = line.Split(' ')[0].ToLower();
                 string data;
                 try { data = line.Substring(command.Length + 1); } catch { data = line.Substring(command.Length); }
@@ -77,9 +90,7 @@ namespace PlugDOS
                 else if (command == "echo")
                 {
                     if (checkArgs(args, 1))
-                    {
                         PlugDOS.WriteLine(data, ConsoleColor.DarkCyan);
-                    }
                 }
                 else if (command == "clear")
                     Console.Clear();
@@ -133,6 +144,14 @@ namespace PlugDOS
                     string state2 = args[1];
                     string state3 = args[2];
                     if (findRegister(state1).Data.ToString() == findRegister(state2).Data.ToString())
+                        this.ExecASM((string)findRegister(state3).Data, "runtime", true);
+                }
+                else if (command == "ifnot")
+                {
+                    string state1 = args[0];
+                    string state2 = args[1];
+                    string state3 = args[2];
+                    if (findRegister(state1).Data.ToString() != findRegister(state2).Data.ToString())
                         this.ExecASM((string)findRegister(state3).Data, "runtime", true);
                 }
                 else if (command == "def") // Read till the end of function, Or throw an error if none was found.
@@ -416,6 +435,8 @@ namespace PlugDOS
         /// Holds the files of the FileSystem in memory.
         /// </summary>
         public List<File> files = new List<File>();
+        public readonly string baseVersion = "1.0-2";
+        public string foundVersion = "BASE";
         public string directory = "/";
         /// <summary>
         /// Holds the path to save the filesystem to.
@@ -448,7 +469,7 @@ namespace PlugDOS
         /// <summary>
         /// Deserialize an object from Binary
         /// </summary>
-        /// <param name="bytes">The bytes for le fil</param>
+        /// <param name="bytes">The bytes for le file</param>
         /// <returns>The object i guess</returns>
         public static object DeserializeFromBytes(byte[] bytes)
         {
@@ -468,6 +489,8 @@ namespace PlugDOS
             using (BinaryWriter writer = new BinaryWriter(System.IO.File.OpenWrite(path)))
             {
                 byte[] bytes = SerializeToBytes(this.files);
+                writer.Write(this.foundVersion);
+                writer.Write(true);
                 writer.Write(Convert.ToBase64String(bytes));
                 writer.Close();
             }
@@ -483,7 +506,19 @@ namespace PlugDOS
             {
                 using (BinaryReader reader = new BinaryReader(System.IO.File.Open(path, FileMode.Open)))
                 {
-                    this.files = (List<File>)DeserializeFromBytes(Convert.FromBase64String(reader.ReadString()));
+                    try
+                    {
+                        this.foundVersion = reader.ReadString();
+                    }
+                    catch
+                    {
+                        this.NewFileSystem();
+                    }
+                    finally
+                    {
+                        bool dummy = reader.ReadBoolean();
+                        this.files = (List<File>)DeserializeFromBytes(Convert.FromBase64String(reader.ReadString()));
+                    }
                     reader.Close();
                 }
             }
@@ -499,12 +534,26 @@ namespace PlugDOS
         /// </summary>
         public void NewFileSystem()
         {
+            this.foundVersion = this.baseVersion;
             WriteFile(new File("/boot.pd",
                 "# The initial boot procedure for PlugDOS that loads up all system files and runs through them.\n" + 
                 "ECHO Booting...\n" +
+                "WAIT 1\n" +
+                "IMPORT /sys/version.pd\n" +
                 "WAIT 2\n" +
                 "IMPORT /sys/load.pd"
                 ));
+            WriteFile(new File("/sys/version.pd",
+                "# The file to check the current base and found version.\n" +
+                "DEF payload9287\n" +
+                "ECHO ERROR: Your filesystem version is not up-to-date, Try running the \"base\" command to update it.\n" +
+                "ECHO Current version: $[found-version] | Latest version: $[base-version]\n" +
+                "END payload9287\n\n" +
+                "REGISTER version-error payload9287\n" +
+                "REGISTER up-to-date ECHO Your filesystem version is up-to-date.\n" +
+                "WAIT 2\n" +
+                "IF base-version found-version up-to-date\n" +
+                "IFNOT base-version found-version version-error"));
             WriteFile(new File("/sys/load.pd",
                 "# The load procedure for all CMD commands and the PROMPT loop.\n" +
                 "IMPORT /sys/prompt.pd\n" +
@@ -522,6 +571,7 @@ namespace PlugDOS
                 "ECHO \"ASK registry string\" => Asks the user for input and puts it into a register\n" +
                 "ECHO \"REGISTER key content\" => Registers a value with a certain key\n" +
                 "ECHO \"WAIT seconds\" => Pauses the program for a specific amount of time\n" +
+                "ECHO \"IFNOT statement1 statement2 registry1\" => If statement1 and 2 from the registry are NOT equal, registry1 will be executed as PDL\n" +
                 "ECHO \"IF statement1 statement2 registry1\" => If statement1 and 2 from the registry are equal, registry1 will be executed as PDL\n" +
                 "ECHO \"DEF functionname\" and \"END functionname\" => Define a function that could be called globally\n" +
                 "ECHO \"OVERRIDE functionname\" and \"END functionname\" => Add PDL scripts to a function\n" +
@@ -562,6 +612,7 @@ namespace PlugDOS
                 "EXEC cmd\n" +
                 "PROMPT2\n" +
                 "END PROMPT2\n"));
+            this.SaveFileSystem(this.FileSystemPath);
         }
 
         public void WriteFile(File file)
