@@ -41,17 +41,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 var called = 0;
-var outputs = [];
 var files = [];
-function stdin(input, callback) {
-    return prompt(outputs.join('\n') + '\n' + input);
-}
-function stdout(output) {
-    outputs.push(output);
-}
-function stdclear() {
-    // outputs = [];
-}
+
 var PlugDOS = /** @class */ (function () {
     function PlugDOS() {
         this.version = "TS-1";
