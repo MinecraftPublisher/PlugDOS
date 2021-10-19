@@ -2,7 +2,7 @@
  * PlugDOS
  * C# to TS port
  * Original lines: 735
- * TS port lines: 541
+ * TS port lines: 546
  */
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -43,7 +43,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 var called = 0;
 var outputs = [];
 var files = [];
-
+function stdin(input, callback) {
+    return prompt(outputs.join('\n') + '\n' + input);
+}
+function stdout(output) {
+    outputs.push(output);
+}
+function stdclear() {
+    // outputs = [];
+}
 var PlugDOS = /** @class */ (function () {
     function PlugDOS() {
         this.version = "TS-1";
@@ -53,23 +61,25 @@ var PlugDOS = /** @class */ (function () {
         this.terminated = false;
     }
     PlugDOS.prototype.Boot = function () {
-        var _this = this;
         this.terminated = false;
         stdout("| PlugDOS " + this.version + " |");
         stdout("Loading PlugDOS...");
         var boot = this.filesystem.ReadFile("/boot.pd");
         if (boot.Path === "EMPTY") {
             stdout("ERROR: Could not find a bootable file.");
-            if (stdin('Do you want to reset the filesystem? (yes/no)') == "yes") {
-                this.filesystem.files = [];
-                this.filesystem.NewFileSystem().then(function () {
-                    _this.Boot();
-                });
-            }
-            else {
-                stdout('Aborting...');
-                stdin("");
-            }
+            stdin('Do you want to reset the filesystem? (yes/no)', function (answer) {
+                var _this = this;
+                if (answer == "yes") {
+                    this.filesystem.files = [];
+                    this.filesystem.NewFileSystem().then(function () {
+                        _this.Boot();
+                    });
+                }
+                else {
+                    stdout('Aborting...');
+                    stdin("", function () { });
+                }
+            });
         }
         else if (boot.FileType != typeof "PLAINTEXT") {
             stdout("ERROR: Could not boot from the bootable file. Reason: Filetype is not PLAINTEXT.");
@@ -94,11 +104,10 @@ var PlugDOS = /** @class */ (function () {
             return new PDLoadedFile("null");
     };
     PlugDOS.prototype.ExecASM = function (input, filename, dependencied) {
-        var _this = this;
         if (dependencied === void 0) { dependencied = false; }
         var index = 0;
         var bootFile = input.split('\n');
-        for (index = 0; index < bootFile.length && !this.terminated; index++) {
+        var _loop_1 = function () {
             var line = bootFile[index];
             var command = line.split(' ')[0].toLowerCase();
             var data = void 0;
@@ -111,16 +120,16 @@ var PlugDOS = /** @class */ (function () {
             var args = data.split(' ');
             if (command === "#" || command === "") { } // A comment
             else if (command === "echo") { // Write text to stdout
-                if (this.checkArgs(args, 1))
+                if (this_1.checkArgs(args, 1))
                     stdout(data);
             }
             else if (command === "clear") { // Clear stdout
                 stdclear();
             }
             else if (command === "dump") { // Dump a file data to stdout
-                if (this.checkArgs(args, 1)) {
-                    if (this.filesystem.ReadFile(args[0]).Path != "EMPTY") {
-                        stdout("\n-----------------\n" + this.filesystem.ReadFile(args[0]).Data + "\n-----------------\n");
+                if (this_1.checkArgs(args, 1)) {
+                    if (this_1.filesystem.ReadFile(args[0]).Path != "EMPTY") {
+                        stdout("\n-----------------\n" + this_1.filesystem.ReadFile(args[0]).Data + "\n-----------------\n");
                     }
                     else {
                         stdout("ERROR: File not found.");
@@ -128,45 +137,46 @@ var PlugDOS = /** @class */ (function () {
                 }
             }
             else if (command === "error") { // Drop an error and crash the program
-                if (!this.checkArgs(args, 1))
-                    break;
+                if (!this_1.checkArgs(args, 1))
+                    return "break";
                 stdout("ERROR: " + data);
-                this.terminated = true;
-                break;
+                this_1.terminated = true;
+                return "break";
             }
             else if (command === "ask") { // Ask for an input and store it in a variable.
-                if (!this.checkArgs(args, 1))
-                    break;
-                var ASKinput = stdin(this.filesystem.directory + " ~ $ ");
-                this.variables[args[0]] = new PDLoadedFile(ASKinput);
+                if (!this_1.checkArgs(args, 1))
+                    return "break";
+                stdin(this_1.filesystem.directory + " ~ $ ", function (callback) {
+                    this.variables[args[0]] = new PDLoadedFile(callback);
+                });
             }
             else if (command === "register") { // Set a variable slot to the given value
-                if (!this.checkArgs(args, 2))
-                    break;
+                if (!this_1.checkArgs(args, 2))
+                    return "break";
                 var registerName = args[0];
                 var registerContent = data.substring(registerName.length + 1);
-                this.variables[registerName] = new PDLoadedFile(registerContent);
+                this_1.variables[registerName] = new PDLoadedFile(registerContent);
             }
             else if (command === "wait") { // Wait for a few seconds, deprecated in TS-PlugDOS, However no warnings or errors are dropped.
-                if (!this.checkArgs(args, 1))
-                    break;
+                if (!this_1.checkArgs(args, 1))
+                    return "break";
                 var delay = 0;
                 if (!isNaN(parseInt(data))) { } // Command deprecated in TS-PlugDOS
                 else
                     stdout("ERROR: Unable to parse delay, Command deprecated.");
             }
             else if (command === "if") { // Check if two statements are equal, And then run a variable data from memory if they match.
-                if (!this.checkArgs(args, 3))
-                    break;
+                if (!this_1.checkArgs(args, 3))
+                    return "break";
                 var state1 = args[0];
                 var state2 = args[1];
                 var state3 = args[2];
-                if ((this.findRegister(state1).Data || "") === (this.findRegister(state2).Data || ""))
-                    this.ExecASM((this.findRegister(state3).Data || ""), "runtime", true);
+                if ((this_1.findRegister(state1).Data || "") === (this_1.findRegister(state2).Data || ""))
+                    this_1.ExecASM((this_1.findRegister(state3).Data || ""), "runtime", true);
             }
             else if (command === "def") { // Read until the end of the function, Or throw an error if the function has no ending.
-                if (!this.checkArgs(args, 1))
-                    break;
+                if (!this_1.checkArgs(args, 1))
+                    return "break";
                 var fnname = args[0].toLowerCase();
                 var func = [
                     "# READ function \"" + fnname + "\""
@@ -197,15 +207,15 @@ var PlugDOS = /** @class */ (function () {
                         index++;
                     }
                 }
-                if (!this.terminated) {
-                    this.loadedFunctions[fnname] = new PDLoadedFile(func.join("\n"));
+                if (!this_1.terminated) {
+                    this_1.loadedFunctions[fnname] = new PDLoadedFile(func.join("\n"));
                 }
             }
             else if (command === "override") { // Read until the end of the override, Or throw an error if the override has no ending or the main function wasnt found.
-                if (!this.checkArgs(args, 1))
-                    break;
-                if (!this.loadedFunctions[args[0]]) {
-                    this.terminated = true;
+                if (!this_1.checkArgs(args, 1))
+                    return "break";
+                if (!this_1.loadedFunctions[args[0]]) {
+                    this_1.terminated = true;
                     stdout("ERROR: Unable to find function to override.");
                 }
                 var fnname = args[0].toLowerCase();
@@ -238,47 +248,47 @@ var PlugDOS = /** @class */ (function () {
                         index++;
                     }
                 }
-                if (!this.terminated) {
+                if (!this_1.terminated) {
                     func.push("# END Function OVERRIDE \"" + fnname + "\" from file \"" + filename + "\"");
-                    this.loadedFunctions = new PDLoadedFile(this.loadedFunctions[fnname].Data + "\n" + func.join("\n"));
+                    this_1.loadedFunctions = new PDLoadedFile(this_1.loadedFunctions[fnname].Data + "\n" + func.join("\n"));
                 }
             }
             else if (command === "write") { // Write data to a file on the disk.
-                if (!this.checkArgs(args, 2))
-                    break;
+                if (!this_1.checkArgs(args, 2))
+                    return "break";
                 var fsName = args[0];
                 var content = data.substring(fsName.length + 1);
                 try {
-                    this.filesystem.DeleteFile(fsName);
+                    this_1.filesystem.DeleteFile(fsName);
                 }
                 catch (_d) { }
-                this.filesystem.WriteFile(new PDFile(fsName, content));
-                this.filesystem.Save();
+                this_1.filesystem.WriteFile(new PDFile(fsName, content));
+                this_1.filesystem.Save();
             }
             else if (command === "remove") { // Delete a file from disk.
-                if (!this.checkArgs(args, 2))
-                    break;
+                if (!this_1.checkArgs(args, 2))
+                    return "break";
                 try {
-                    this.filesystem.DeleteFile(args[0]);
+                    this_1.filesystem.DeleteFile(args[0]);
                 }
                 catch (_e) { }
-                this.filesystem.Save();
+                this_1.filesystem.Save();
             }
             else if (command === "append") { // Append data to the end of a file.
-                if (!this.checkArgs(args, 2))
-                    break;
+                if (!this_1.checkArgs(args, 2))
+                    return "break";
                 var fsName = args[0];
                 var content = data.substring(fsName.length + 1);
-                if (this.filesystem.ReadFile(fsName).Path === "EMPTY") {
-                    this.filesystem.WriteFile(new PDFile(fsName, content));
-                    this.filesystem.Save();
+                if (this_1.filesystem.ReadFile(fsName).Path === "EMPTY") {
+                    this_1.filesystem.WriteFile(new PDFile(fsName, content));
+                    this_1.filesystem.Save();
                 }
                 else {
-                    var fsFile = this.filesystem.ReadFile(fsName);
+                    var fsFile = this_1.filesystem.ReadFile(fsName);
                     if (fsFile.FileType === typeof "string") {
-                        this.filesystem.DeleteFile(fsName);
+                        this_1.filesystem.DeleteFile(fsName);
                         fsFile.Data += "\n" + content;
-                        this.filesystem.Save();
+                        this_1.filesystem.Save();
                     }
                     else {
                         stdout("ERROR: Filetype unmergeable");
@@ -286,40 +296,43 @@ var PlugDOS = /** @class */ (function () {
                 }
             }
             else if (command === "import") { // Import a module as a PDL.
-                if (this.filesystem.ReadFile(data).Path === "EMPTY") {
+                if (this_1.filesystem.ReadFile(data).Path === "EMPTY") {
                     // this.terminated = true;
                     stdout("ERROR: Couldn't find file to import, Process will keep running.");
                 }
                 else {
-                    this.ExecASM((this.filesystem.ReadFile(data).Data || ""), "runtime", true);
+                    this_1.ExecASM((this_1.filesystem.ReadFile(data).Data || ""), "runtime", true);
                 }
             }
             else if (command === "exec") { // Execute a PDL from a variable.
-                this.ExecASM(this.findRegister(data).Data || "", "runtime", true);
+                this_1.ExecASM(this_1.findRegister(data).Data || "", "runtime", true);
             }
             else if (command === "save") { // Save the filesystem.
-                this.filesystem.Save();
+                this_1.filesystem.Save();
             }
             else if (command === "load") { // Load the filesystem.
-                this.filesystem.Load();
+                this_1.filesystem.Load();
             }
             else if (command === "wipe") { // Wipe the filesystem.
                 stdout("CAUTION: This action will wipe your whole disk, Meaning you will loose everything you have stored in PlugDOS!\nIf you want to continue, Type in \"agree\" into the box below and press enter.");
-                if (stdin("Typing \"agree\" would delete ALL your files >> ") === "agree") {
-                    stdout("WIPING DRIVE...");
-                    files = [];
-                    this.filesystem.NewFileSystem().then(function () {
-                        _this.filesystem.Save();
-                    });
-                }
-                else {
-                    this.terminated = true;
-                    stdout("[PROCESS TERMINATION] Reason: trying to wipe the filesystem.");
-                }
+                stdin("Typing \"agree\" would delete ALL your files >> ", function (answer) {
+                    var _this = this;
+                    if (answer === "agree") {
+                        stdout("WIPING DRIVE...");
+                        files = [];
+                        this.filesystem.NewFileSystem().then(function () {
+                            _this.filesystem.Save();
+                        });
+                    }
+                    else {
+                        this.terminated = true;
+                        stdout("[PROCESS TERMINATION] Reason: trying to wipe the filesystem.");
+                    }
+                });
             }
             else if (command === "ls") { // List all files in the current directory.
                 var output = "----------\n";
-                for (var _i = 0, _f = this.filesystem.GetFiles(this.filesystem.directory); _i < _f.length; _i++) {
+                for (var _i = 0, _f = this_1.filesystem.GetFiles(this_1.filesystem.directory); _i < _f.length; _i++) {
                     var file = _f[_i];
                     output += file.Path + "\n";
                 }
@@ -327,83 +340,89 @@ var PlugDOS = /** @class */ (function () {
                 stdout(output);
             }
             else if (command === "cd") { // Switch to a directory
-                if (!this.checkArgs(args, 1))
-                    break;
+                if (!this_1.checkArgs(args, 1))
+                    return "break";
                 if (data === "." || data === "..") { }
                 if (data === "")
-                    this.filesystem.directory = "/";
+                    this_1.filesystem.directory = "/";
                 if (!data.endsWith("/"))
                     data += "/";
                 if (data.startsWith("/"))
-                    this.filesystem.directory = data;
+                    this_1.filesystem.directory = data;
                 else {
-                    this.filesystem.directory += data;
-                    this.filesystem.directory = this.filesystem.directory.replace("//", "");
+                    this_1.filesystem.directory += data;
+                    this_1.filesystem.directory = this_1.filesystem.directory.replace("//", "");
                 }
             }
             else if (command === "mkdir") { // Create a directory.
-                if (!this.checkArgs(args, 1))
-                    break;
+                if (!this_1.checkArgs(args, 1))
+                    return "break";
             }
             else if (command === "rmdir") { // Delete a directory.
-                if (!this.checkArgs(args, 1))
-                    break;
-                this.filesystem.DeleteDirectory(args[0]);
+                if (!this_1.checkArgs(args, 1))
+                    return "break";
+                this_1.filesystem.DeleteDirectory(args[0]);
             }
             else if (command === "reg") { // The ultimate registry tool
-                if (!this.checkArgs(args, 3))
-                    break;
+                if (!this_1.checkArgs(args, 3))
+                    return "break";
                 var regCMD = args[0];
                 var path = args[1];
                 var reg = args[2];
                 if (regCMD === "write") { // Write value from the registry to a file.
-                    if ((this.findRegister(reg).Data || "") === "null") {
+                    if ((this_1.findRegister(reg).Data || "") === "null") {
                         stdout("ERROR: Registry field not found");
                     }
                     else {
-                        this.filesystem.DeleteFile(path);
-                        this.filesystem.WriteFile(new PDFile(path, (this.findRegister(reg).Data || "")));
+                        this_1.filesystem.DeleteFile(path);
+                        this_1.filesystem.WriteFile(new PDFile(path, (this_1.findRegister(reg).Data || "")));
                     }
                 }
                 else if (regCMD === "read") { // Read a value from a file and write it to a registry slot.
-                    var foundFile = this.filesystem.ReadFile(path);
-                    this.variables[reg] = new PDLoadedFile(foundFile.Data);
+                    var foundFile = this_1.filesystem.ReadFile(path);
+                    this_1.variables[reg] = new PDLoadedFile(foundFile.Data);
                 }
                 else if (regCMD === "clone") { // Clone a registry value.
-                    if ((this.findRegister(path).Data || "") === "null") {
+                    if ((this_1.findRegister(path).Data || "") === "null") {
                         stdout("ERROR: Registry field not found.");
                     }
                     else {
-                        this.variables[reg] = this.findRegister(path);
+                        this_1.variables[reg] = this_1.findRegister(path);
                     }
                 }
-                this.filesystem.Save();
+                this_1.filesystem.Save();
             }
             else if (command === "base") {
                 stdout("Updating system files...");
-                this.filesystem.NewFileSystem();
+                this_1.filesystem.NewFileSystem();
             }
             else if (command === "exit") {
                 stdout("Shutting down safely...");
                 stdout("Stopping all running PDBs...");
-                this.terminated = true;
+                this_1.terminated = true;
                 stdout("Saving the filesystem...");
-                this.filesystem.Save();
+                this_1.filesystem.Save();
                 stdout("Freeing up ram space...");
-                this.variables = [];
-                this.loadedFunctions = [];
+                this_1.variables = [];
+                this_1.loadedFunctions = [];
                 stdout("Now you are able to safely close PlugDOS without any issues. Type in anything to close this window.");
-                stdin("");
+                stdin("", function () { });
             }
             else { // Check if the user is calling a function, Throw an error if it is unknown, Or run the function.
-                if (this.loadedFunctions[command]) {
-                    var func = this.loadedFunctions[command];
-                    this.ExecASM((func.Data || ""), "runtime", true);
+                if (this_1.loadedFunctions[command]) {
+                    var func = this_1.loadedFunctions[command];
+                    this_1.ExecASM((func.Data || ""), "runtime", true);
                 }
                 else {
                     stdout("ERROR: Unknown command \"" + command.toUpperCase() + "\"");
                 }
             }
+        };
+        var this_1 = this;
+        for (index = 0; index < bootFile.length && !this.terminated; index++) {
+            var state_1 = _loop_1();
+            if (state_1 === "break")
+                break;
         }
     };
     return PlugDOS;
@@ -623,3 +642,5 @@ var PDFileSystem = /** @class */ (function () {
     };
     return PDFileSystem;
 }());
+var dos = new PlugDOS();
+dos.Boot();
