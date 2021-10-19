@@ -30,10 +30,13 @@
         term.writeln(output);
       }
       
-      function stdin(input) {
-        while(!isInputted) {}
-        isInputted = false;
-        return finalData;
+      function stdin(input, callback) {
+        if(isInputted) {
+            isInputted = false;
+            return callback(finalData);
+        } else {
+            setTimeout(function(){ stdin(input, callback); }, 100)
+        }
       }
       
       function stdclear() {
