@@ -44,8 +44,8 @@ var called = 0;
 var outputs = [];
 var files = [];
 function stdin(input) {
-    var result = prompt(outputs.join('\n') + '\n' + input);
-    console.log(result);
+    var result = prompt(outputs.slice(5).join('\n') + '\n' + input);
+    stdout(result);
     return result;
 }
 function stdout(output) {
@@ -317,7 +317,7 @@ var PlugDOS = /** @class */ (function () {
                 stdout("CAUTION: This action will wipe your whole disk, Meaning you will loose everything you have stored in PlugDOS!\nIf you want to continue, Type in \"agree\" into the box below and press enter.");
                 if (stdin("Typing \"agree\" would delete ALL your files >> ") === "agree") {
                     stdout("WIPING DRIVE...");
-                    files = [];
+                    this.filesystem.files = [];
                     this.filesystem.NewFileSystem().then(function () {
                         _this.filesystem.Save();
                     });
@@ -563,7 +563,7 @@ var PDFileSystem = /** @class */ (function () {
             return false;
         }
         else {
-            files = files.filter(function (file) { return file.Path !== Path; });
+            this.files = files.filter(function (file) { return file.Path !== Path; });
             this.Save();
             return true;
         }
@@ -591,7 +591,7 @@ var PDFileSystem = /** @class */ (function () {
         }
         else {
             workingPath += ".RESERVE";
-            files = files.filter(function (file) { return file.Path !== workingPath || file.Path.startsWith(workingPath); });
+            this.files = files.filter(function (file) { return file.Path !== workingPath || file.Path.startsWith(workingPath); });
         }
         this.Save();
     };
