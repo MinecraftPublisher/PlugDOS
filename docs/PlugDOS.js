@@ -99,7 +99,7 @@ var PlugDOS = /** @class */ (function () {
         if (this.variables[key])
             return this.variables[key];
         else
-            return new PDLoadedFile("null");
+            return new PDLoadedFile("UNFOUND");
     };
     PlugDOS.prototype.ExecASM = function (input, filename, dependencied) {
         var _this = this;
