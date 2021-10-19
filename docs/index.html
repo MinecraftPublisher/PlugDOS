@@ -31,12 +31,9 @@
       }
       
       function stdin(input) {
-        if(isInputted) {
-          isInputted = false;
-          return finalData;
-        } else {
-          return stdin(input);
-        }
+        while(!isInputted) {}
+        isInputted = false;
+        return finalData;
       }
       
       function stdclear() {
