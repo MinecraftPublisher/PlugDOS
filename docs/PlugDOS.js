@@ -2,7 +2,7 @@
  * PlugDOS
  * C# to TS port
  * Original lines: 735
- * TS port lines: 529
+ * TS port lines: 542
  */
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -44,8 +44,7 @@ var called = 0;
 var outputs = [];
 var files = [];
 function stdin(input) {
-    var result = prompt(outputs.slice(-5).join('\n') + '\n' + input);
-    stdout(result);
+    var result = prompt(outputs.slice(-4).join('\n') + '\n' + input);
     return result;
 }
 function stdout(output) {
