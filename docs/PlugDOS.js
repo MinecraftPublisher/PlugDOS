@@ -44,7 +44,7 @@ var called = 0;
 var outputs = [];
 var files = [];
 function stdin(input) {
-    var result = prompt(outputs.slice(5).join('\n') + '\n' + input);
+    var result = prompt(outputs.slice(-5).join('\n') + '\n' + input);
     stdout(result);
     return result;
 }
