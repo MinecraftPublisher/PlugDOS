@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -74,6 +75,21 @@ namespace PlugDOS
                 variables["base-version"] = new LoadedFile(this.filesystem.baseVersion);
                 variables["found-version"] = new LoadedFile(this.filesystem.foundVersion);
                 string line = bootFile[index];
+                foreach (Match match in Regex.Matches(line, @"\$\[(NET|net):[^\]]+\]"))
+                {
+                    string url = match.Value.Substring("$[NET:".Length, match.Value.Length - "$[NET:".Length - 1);
+                    try
+                    {
+                        WebClient net = new WebClient();
+                        string result = net.DownloadString(url);
+                        line = Regex.Replace(line, @"\$\[(NET|net):" + url + @"\]", result);
+                    }
+                    catch (Exception e)
+                    {
+                        WriteLine(e.Message);
+                        line = Regex.Replace(line, @"\$\[(NET|net):" + url + @"\]", "NETWORK_FAILURE");
+                    }
+                }
                 foreach (Match match in Regex.Matches(line, @"\$\[[^\]]+\]"))
                 {
                     string RegisterName = match.Value.Substring(2, match.Value.Length - 3);
