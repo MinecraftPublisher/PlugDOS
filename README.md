@@ -2,10 +2,7 @@
  A Semi-OS optimised for the command line.
 
 ## What does it do?
-Everything...? ( ~~Except filesystem access~~ half done )
-
-<iframe src="https://minecraftpublisher.github.io/PlugDOS/dos/">
-</iframe>
+Everything...?
 
 ## The programming language name: PlugDOSLang (PDL)
 
