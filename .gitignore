@@ -19,3 +19,7 @@ PlugDOS/bin/Debug/PlugDOS.exe
 PlugDOS/bin/Release/PlugDOS.fs.bin
 *.bin
 *.exe
+*.cache
+*.cache
+*.txt
+*.bin

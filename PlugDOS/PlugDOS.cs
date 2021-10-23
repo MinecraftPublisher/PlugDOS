@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -15,6 +16,28 @@ namespace PlugDOS
         public FileSystem filesystem = new FileSystem();
         public Dictionary<string, LoadedFile> loadedFunctions = new Dictionary<string, LoadedFile>();
         public Dictionary<string, LoadedFile> variables = new Dictionary<string, LoadedFile>();
+        public static ConsoleColor defaultColor = ConsoleColor.DarkCyan;
+
+        static ConsoleColor ClosestConsoleColor(byte r, byte g, byte b)
+        {
+            ConsoleColor ret = ConsoleColor.Yellow;
+            double rr = r, gg = g, bb = b, delta = double.MaxValue;
+
+            foreach (ConsoleColor cc in Enum.GetValues(typeof(ConsoleColor)))
+            {
+                var n = Enum.GetName(typeof(ConsoleColor), cc);
+                var c = Color.FromName(n == "DarkYellow" ? "Orange" : n); // bug fix
+                var t = Math.Pow(c.R - rr, 2.0) + Math.Pow(c.G - gg, 2.0) + Math.Pow(c.B - bb, 2.0);
+                if (t == 0.0)
+                    return cc;
+                if (t < delta)
+                {
+                    delta = t;
+                    ret = cc;
+                }
+            }
+            return ret;
+        }
 
         public void Boot()
         {
@@ -30,14 +53,17 @@ namespace PlugDOS
             }
             else
             {
-                WriteLine("Booting from filesystem...");
                 ExecASM(boot.Data.ToString(), boot.Path);
             }
         }
 
-        public static void WriteLine(string text, ConsoleColor color = ConsoleColor.Yellow)
+        public static void WriteLine(string text, ConsoleColor color = (ConsoleColor)69420)
         {
-            Console.ForegroundColor = color;
+            if(color == (ConsoleColor)69420)
+                Console.ForegroundColor = defaultColor;
+            else
+                Console.ForegroundColor = color;
+
             Console.WriteLine(text);
             Console.ResetColor();
         }
@@ -106,7 +132,7 @@ namespace PlugDOS
                 else if (command == "echo")
                 {
                     if (checkArgs(args, 1))
-                        PlugDOS.WriteLine(data, ConsoleColor.DarkCyan);
+                        PlugDOS.WriteLine(data);
                 }
                 else if (command == "clear")
                     Console.Clear();
@@ -303,8 +329,7 @@ namespace PlugDOS
                 {
                     if (filesystem.ReadFile(data).Path == "EMPTY")
                     {
-                        terminated = true;
-                        PlugDOS.WriteLine("ERROR: Couldn't find file to import, Process terminated.", ConsoleColor.Red);
+                        PlugDOS.WriteLine("ERROR: Couldn't find file to import.", ConsoleColor.Red);
                     }
                     else
                     {
@@ -421,6 +446,11 @@ namespace PlugDOS
                     variables = new Dictionary<string, LoadedFile>();
                     loadedFunctions = new Dictionary<string, LoadedFile>();
                     PlugDOS.WriteLine("Now you are able to safely close PlugDOS without any issues.");
+                }
+                else if (command == "color")
+                {
+                    if (!checkArgs(args, 3)) break;
+                    defaultColor = ClosestConsoleColor((byte)Int32.Parse(args[0]), (byte)Int32.Parse(args[1]), (byte)Int32.Parse(args[2]));
                 }
 
 
@@ -604,7 +634,10 @@ namespace PlugDOS
                 "ECHO \"MKDIR dirpath\" => Creates a directory at the given path\n" +
                 "ECHO \"RMDIR path\" => Deletes a directory at the given path\n" +
                 "ECHO \"REG\" => This command has a few parts, Which will be explained in the REGHELP command, Please refer to there\n" +
-                "ECHO \"UPDATE\" => Updates the system files from the current executable" +
+                "ECHO \"UPDATE\" => Updates the system files from the current executable\n" +
+                "ECHO \"COLOR red green blue\" => Changes the console's color\n" +
+                "ECHO \"RESETCOLOR\" => Resets the console's color to the usual one\n" +
+                "ECHO For a full guide on how to use the variable and internet system, Use the \"VARHELP\" command.\n" +
                 "ECHO And finally, To call a registered function, You just need to type its name in the EXEC command or your PDL script\n" +
                 "ECHO --- END help ---\n" +
                 "END help\n" +
@@ -615,7 +648,14 @@ namespace PlugDOS
                 "ECHO \"REG READ filepath registry1\" => Pulls data form a file and registers it on the registry\n" +
                 "ECHO \"REG clone registry1 registry2\" => Writes registry1 to registry2\n" +
                 "ECHO --- END REG command help ---\n" +
-                "END reghelp\n"));
+                "END reghelp\n" +
+                "\n" +
+                "DEF varhelp\n" +
+                "ECHO --- Variables help ---\n" +
+                "ECHO To use a variable, Simply replace the spot that you want to place your variable with $̶[VARIABLE_NAME].\n" +
+                "ECHO If you want to download something from the internet with this method, Simply use $̶[NET:URL_GOES_HERE] or $̶[net:URL_GOES_HERE].\n" +
+                "ECHO --- End variables help ---\n" +
+                "END varhelp"));
             WriteFile(new File("/sys/prompt.pd",
                 "# The command PROMPT for PlugDOS.\n" +
                 "DEF PROMPT\n" +
