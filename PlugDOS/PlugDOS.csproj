@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">anycpu</Platform>
-    <ProjectGuid>{941D0766-A24A-4F04-9B1A-7DE1E106B1AB}</ProjectGuid>
+    <ProjectGuid>{D1B43672-8B57-40ED-89C0-823F62F1A4EA}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>PlugDOS</RootNamespace>
     <AssemblyName>PlugDOS</AssemblyName>
@@ -28,15 +28,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="PlugDOS.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="EmptyTextFile.txt" />
+    <Compile Include="EmptyClass.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

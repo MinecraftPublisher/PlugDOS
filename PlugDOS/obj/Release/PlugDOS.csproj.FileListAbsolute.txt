@@ -1,4 +1,0 @@
-/Users/m.foroud/Documents/GitHub/PlugDOS/PlugDOS/bin/Release/PlugDOS.exe
-/Users/m.foroud/Documents/GitHub/PlugDOS/PlugDOS/obj/Release/PlugDOS.csproj.CoreCompileInputs.cache
-/Users/m.foroud/Documents/GitHub/PlugDOS/PlugDOS/obj/Release/PlugDOS.exe
-/Users/m.foroud/Documents/GitHub/PlugDOS/PlugDOS/obj/Release/PlugDOS.csproj.AssemblyReference.cache

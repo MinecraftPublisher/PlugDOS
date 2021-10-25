@@ -59,7 +59,7 @@ namespace PlugDOS
 
         public static void WriteLine(string text, ConsoleColor color = (ConsoleColor)69420)
         {
-            if(color == (ConsoleColor)69420)
+            if (color == (ConsoleColor)69420)
                 Console.ForegroundColor = defaultColor;
             else
                 Console.ForegroundColor = color;
@@ -240,7 +240,7 @@ namespace PlugDOS
                 else if (command == "override") // Read until the override end, And write it
                 {
                     if (!checkArgs(args, 1)) break;
-                    if(!loadedFunctions.ContainsKey(args[0]))
+                    if (!loadedFunctions.ContainsKey(args[0]))
                     {
                         terminated = true;
                         PlugDOS.WriteLine("ERROR: Unable to find function to override.");
@@ -470,7 +470,7 @@ namespace PlugDOS
                         PlugDOS.WriteLine("ERROR: Unknown command \"" + command.ToUpper() + "\"", ConsoleColor.Red);
                     }
                 }
-                
+
             }
         }
     }
@@ -582,7 +582,7 @@ namespace PlugDOS
         {
             this.foundVersion = this.baseVersion;
             WriteFile(new File("/boot.pd",
-                "# The initial boot procedure for PlugDOS that loads up all system files and runs through them.\n" + 
+                "# The initial boot procedure for PlugDOS that loads up all system files and runs through them.\n" +
                 "ECHO Booting...\n" +
                 "WAIT 1\n" +
                 "IMPORT /sys/version.pd\n" +
@@ -674,11 +674,11 @@ namespace PlugDOS
         public void WriteFile(File file)
         {
             File file2 = file;
-            if(file2.Path.EndsWith(".RESERVE"))
+            if (file2.Path.EndsWith(".RESERVE"))
             {
                 PlugDOS.WriteLine("ERROR: Denied permission to reserved file/path", ConsoleColor.Red);
             }
-            if(!file2.Path.StartsWith("/"))
+            if (!file2.Path.StartsWith("/"))
                 file2.Path = "/" + file2.Path;
             if (ReadFile(file2.Path).Path == "EMPTY")
                 files.Add(file2);
@@ -714,7 +714,7 @@ namespace PlugDOS
 
         public bool DeleteFile(string path)
         {
-            if(this.ReadFile(path).Path == "EMPTY")
+            if (this.ReadFile(path).Path == "EMPTY")
             {
                 return false;
             }
@@ -731,7 +731,7 @@ namespace PlugDOS
             string workingPath = directory + path;
             if (!workingPath.EndsWith("/"))
                 workingPath += "/";
-            if(workingPath.Contains(".RESERVE"))
+            if (workingPath.Contains(".RESERVE"))
             {
                 PlugDOS.WriteLine("ERROR: Denied permission to reserved file/path", ConsoleColor.Red);
             }
@@ -774,10 +774,10 @@ namespace PlugDOS
                 List<File> files = new List<File>();
                 foreach (File file in this.files)
                 {
-                    if(file.Path.StartsWith(path))
+                    if (file.Path.StartsWith(path))
                     {
                         string filename = file.Path.Substring(path.Length);
-                        if(filename.IndexOf('/') == -1)
+                        if (filename.IndexOf('/') == -1)
                         {
                             files.Add(file);
                         }
@@ -785,7 +785,7 @@ namespace PlugDOS
                         {
                             string dirpath = path + filename.Split('/')[0] + "/";
                             bool isAdded = false;
-                            foreach(File file2 in files)
+                            foreach (File file2 in files)
                             {
                                 if (file2.Path == dirpath)
                                     isAdded = true;
