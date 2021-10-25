@@ -1,15 +1,6 @@
 .DS_STORE
 *.DS_STORE
 PlugDOS/bin/Release/PlugDOS.fs.bin
-
-
-
-
-
-
-florida
-man
-😏
 PlugDOS/bin/Debug/PlugDOS.exe
 *.bin
 *.pdb
@@ -23,3 +14,11 @@ PlugDOS/bin/Release/PlugDOS.fs.bin
 *.cache
 *.txt
 *.bin
+
+
+
+
+
+florida
+man
+😏
